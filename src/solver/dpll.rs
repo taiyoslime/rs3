@@ -205,6 +205,7 @@ impl Solver for DPLLSolver {
             }
 
             if unsat {
+                #[cfg(debug_assertions)]
                 println!("{:?}", self.fields);
                 self.fields.pop();
                 self.result.pop();

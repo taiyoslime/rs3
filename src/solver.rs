@@ -27,7 +27,7 @@ impl fmt::Display for SATResult {
                 );
                 write!(f, "{}", buf)
             }
-            SATResult::UnSat => writeln!(f, "s UNSATISFIABLE"),
+            SATResult::UnSat => write!(f, "s UNSATISFIABLE"),
         }
     }
 }
