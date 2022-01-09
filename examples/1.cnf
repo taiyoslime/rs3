@@ -1,7 +1,6 @@
-c from http://www.domagoj-babic.com/uploads/ResearchProjects/Spear/dimacs-cnf.pdf
-c Example CNF format file
-c
-p cnf 4 3
-1 3 -4 0
-4 0 2
--3
+c from https://ja.wikipedia.org/wiki/DPLL%E3%82%A2%E3%83%AB%E3%82%B4%E3%83%AA%E3%82%BA%E3%83%A0
+p cnf 4 4
+1 2 0
+-1 -2 0
+3 4 0
+-3 4 0
