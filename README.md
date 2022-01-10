@@ -10,16 +10,16 @@ $ cargo build --release
 ## Usage(from CLI)
 supports [DIMACS CNF format](http://www.domagoj-babic.com/uploads/ResearchProjects/Spear/dimacs-cnf.pdf) as input.
 ```
-$ cd target/release
-$ ./rs3 examples/1.cnf
+$ cargo --release run -- examples/1.cnf
+(snip)
 s SATISFIABLE
 v -1 -2 3 4
 
-$ ./rs3 examples/2.cnf
+$ cargo --release run -- examples/2.cnf
+(snip)
 s UNSATISFIABLE
 
 ```
-
 
 ## License
 [MIT](LICENSE)
