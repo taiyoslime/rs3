@@ -1,4 +1,5 @@
 use super::*;
+use rand::Rng;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Lit {
@@ -10,13 +11,16 @@ enum Lit {
 #[derive(Debug, Clone)]
 pub struct Clause {
     eliminated: bool,
+    num_non_empty_lits: isize,
     lits: Vec<Lit>,
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Field {
     num_vars: usize,
     num_clause: usize,
+    
     clauses: Vec<Clause>,
 }
 
@@ -41,6 +45,7 @@ impl Solver for DPLLSolver {
             clauses: vec![
                 Clause {
                     eliminated: false,
+                    num_non_empty_lits: 0,
                     lits: vec![Lit::Empty; num_vars as usize]
                 };
                 clauses.len()
@@ -55,7 +60,8 @@ impl Solver for DPLLSolver {
                 field.clauses[i].lits[var] = match sign {
                     dimacs::Sign::Pos => Lit::Pos,
                     dimacs::Sign::Neg => Lit::Neg,
-                }
+                };
+                field.clauses[i].num_non_empty_lits += 1;
             }
         }
         self.result.push(vec![None; field.num_vars]);
@@ -111,9 +117,6 @@ impl Solver for DPLLSolver {
 
             // unit rule
 
-            // 1度以上は全てのcellを見るはずなので，ここでsplitting ruleでsplitする項の選択のため各項の出現数をカウント
-            let mut count_lit = vec![0; target_field.num_vars];
-
             loop {
                 let mut found_unit_lit = false;
                 let mut unit_lit: Lit = Lit::Empty;
@@ -124,29 +127,18 @@ impl Solver for DPLLSolver {
                     .iter_mut()
                     .filter(|clause| !clause.eliminated)
                 {
-                    for v in count_lit.iter_mut() {
-                        *v = 0;
-                    }
-
-                    let mut found = false;
-                    for (i, lit) in clause.lits.iter().enumerate() {
-                        match lit {
-                            Lit::Empty => (),
-                            _ => {
-                                count_lit[i] += 1;
-                                if found {
-                                    found = false;
-                                    break;
-                                } else {
-                                    found = true;
-                                    unit_lit = *lit;
+                    if clause.num_non_empty_lits == 1 {
+                        found_unit_lit = true;
+                        for (i, lit) in clause.lits.iter().enumerate() {
+                            match lit {
+                                Lit::Pos | Lit::Neg => {
                                     unit_lit_idx = i;
+                                    unit_lit = *lit;
+                                    break;
                                 }
+                                _ => (),
                             }
                         }
-                    }
-                    if found {
-                        found_unit_lit = true;
                         break;
                     }
                 }
@@ -163,6 +155,7 @@ impl Solver for DPLLSolver {
                             }
                             (Lit::Pos, Lit::Neg) | (Lit::Neg, Lit::Pos) => {
                                 clause.lits[unit_lit_idx] = Lit::Empty;
+                                clause.num_non_empty_lits -= 1;
                             }
                             (_, _) => (),
                         }
@@ -196,10 +189,7 @@ impl Solver for DPLLSolver {
             if clauses_empty {
                 let result = target_result
                     .iter()
-                    .map(|r| match *r {
-                        Some(b) => b,
-                        None => true,
-                    })
+                    .map(|r| r.unwrap_or(true))
                     .collect::<Vec<bool>>();
                 return Ok(SATResult::Sat(result));
             }
@@ -214,28 +204,26 @@ impl Solver for DPLLSolver {
 
             // splitting rule
 
-            let mut most_freq_lit_count = -1;
-            let mut most_freq_lit_idx: usize = 0;
+            let mut rng = rand::thread_rng();
+            let rn = rng.gen::<usize>();
+            let most_freq_lit_idx: usize =  rn % target_field.num_vars;
 
-            for (i, v) in count_lit.iter().enumerate() {
-                if *v > most_freq_lit_count {
-                    most_freq_lit_idx = i;
-                    most_freq_lit_count = *v;
-                }
-            }
+            target_field.clauses = target_field
+                .clauses
+                .iter()
+                .filter(|clause| !clause.eliminated)
+                .cloned()
+                .collect::<Vec<Clause>>();
 
             // true
-            for clause in target_field
-                .clauses
-                .iter_mut()
-                .filter(|clause| !clause.eliminated)
-            {
+            for clause in target_field.clauses.iter_mut() {
                 match clause.lits[most_freq_lit_idx] {
                     Lit::Pos => {
                         clause.eliminated = true;
                     }
                     Lit::Neg => {
                         clause.lits[most_freq_lit_idx] = Lit::Empty;
+                        clause.num_non_empty_lits -= 1;
                     }
                     _ => (),
                 }
@@ -247,25 +235,20 @@ impl Solver for DPLLSolver {
             let mut target_field_dup = target_field.clone();
             let mut target_result_dup = target_result.clone();
 
-            for clause in target_field_dup
-                .clauses
-                .iter_mut()
-                .filter(|clause| !clause.eliminated)
-            {
+            for clause in target_field_dup.clauses.iter_mut() {
                 match clause.lits[most_freq_lit_idx] {
                     Lit::Neg => {
                         clause.eliminated = true;
                     }
                     Lit::Pos => {
                         clause.lits[most_freq_lit_idx] = Lit::Empty;
+                        clause.num_non_empty_lits -= 1;
                     }
                     _ => (),
                 }
             }
 
             target_result_dup[most_freq_lit_idx] = Some(false);
-
-            // TODO filedのshrink
 
             self.fields.push(target_field_dup);
             self.result.push(target_result_dup);
