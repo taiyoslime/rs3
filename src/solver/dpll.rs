@@ -1,5 +1,4 @@
 use super::*;
-use rand::Rng;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Lit {
@@ -20,7 +19,7 @@ pub struct Clause {
 pub struct Field {
     num_vars: usize,
     num_clause: usize,
-    
+
     clauses: Vec<Clause>,
 }
 
@@ -204,10 +203,6 @@ impl Solver for DPLLSolver {
 
             // splitting rule
 
-            let mut rng = rand::thread_rng();
-            let rn = rng.gen::<usize>();
-            let most_freq_lit_idx: usize =  rn % target_field.num_vars;
-
             target_field.clauses = target_field
                 .clauses
                 .iter()
@@ -215,43 +210,57 @@ impl Solver for DPLLSolver {
                 .cloned()
                 .collect::<Vec<Clause>>();
 
-            // true
-            for clause in target_field.clauses.iter_mut() {
-                match clause.lits[most_freq_lit_idx] {
-                    Lit::Pos => {
-                        clause.eliminated = true;
-                    }
-                    Lit::Neg => {
-                        clause.lits[most_freq_lit_idx] = Lit::Empty;
-                        clause.num_non_empty_lits -= 1;
+            let mut split_lit_idx: usize = 0;
+            for (i, lit) in target_field.clauses[0].lits.iter().enumerate() {
+                match lit {
+                    Lit::Pos | Lit::Neg => {
+                        split_lit_idx = i;
+                        break;
                     }
                     _ => (),
                 }
             }
 
-            target_result[most_freq_lit_idx] = Some(true);
-
-            // false
             let mut target_field_dup = target_field.clone();
             let mut target_result_dup = target_result.clone();
 
-            for clause in target_field_dup.clauses.iter_mut() {
-                match clause.lits[most_freq_lit_idx] {
-                    Lit::Neg => {
+            // true
+            for clause in target_field.clauses.iter_mut() {
+                match clause.lits[split_lit_idx] {
+                    Lit::Pos => {
                         clause.eliminated = true;
                     }
-                    Lit::Pos => {
-                        clause.lits[most_freq_lit_idx] = Lit::Empty;
+                    Lit::Neg => {
+                        clause.lits[split_lit_idx] = Lit::Empty;
                         clause.num_non_empty_lits -= 1;
                     }
                     _ => (),
                 }
             }
 
-            target_result_dup[most_freq_lit_idx] = Some(false);
+            target_result[split_lit_idx] = Some(true);
+
+            // false
+            for clause in target_field_dup.clauses.iter_mut() {
+                match clause.lits[split_lit_idx] {
+                    Lit::Neg => {
+                        clause.eliminated = true;
+                    }
+                    Lit::Pos => {
+                        clause.lits[split_lit_idx] = Lit::Empty;
+                        clause.num_non_empty_lits -= 1;
+                    }
+                    _ => (),
+                }
+            }
+
+            target_result_dup[split_lit_idx] = Some(false);
 
             self.fields.push(target_field_dup);
             self.result.push(target_result_dup);
+
+            #[cfg(debug_assertions)]
+            println!("{:?}", self.fields);
         }
 
         Ok(SATResult::UnSat)
