@@ -1,7 +1,10 @@
 Programs to convert Sudoku problems to DIMACS CNF format.
 
+The example problems are taken from
+- https://en.wikipedia.org/wiki/Sudoku for `1`
+- https://www.sudokuwiki.org/Arto_Inkala_Sudoku, http://web.archive.org/web/20120701002640/https://www.telegraph.co.uk/science/science-news/9359579/Worlds-hardest-sudoku-can-you-crack-it.html for `2`, which is regarded as the hardest Sudoku problem in the world
+
 ```
-# taken from https://en.wikipedia.org/wiki/Sudoku
 $ cat example
 9
 5 3 0 0 7 0 0 0 0
